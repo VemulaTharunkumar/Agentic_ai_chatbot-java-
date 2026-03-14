@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import { LogOut, Copy, Send, Bot, Check, LayoutDashboard, Brain, Globe, Code, FileText, Trash2 } from 'lucide-react';
 import ThinkingLoader from './ThinkingLoader';
 import './Dashboard.css';
-
+const API_URL = "https://agentic-ai-chatbot-1-30s7.onrender.com";
 const Dashboard = ({ user, onLogout }) => {
   const [task, setTask] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -20,7 +20,7 @@ const Dashboard = ({ user, onLogout }) => {
     const fetchHistory = async () => {
       if (!user?.username) return;
       try {
-        const res = await fetch(`https://agentic-ai-chatbot-1-30s7.onrender.com/`);
+        const res = await fetch(`${API_URL}/api/history/${user.username}`);
         if (res.ok) {
           const data = await res.json();
           // The API returns it sorted newest first (timestamp DESC). We want oldest first for display flow.
