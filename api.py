@@ -13,6 +13,9 @@ from ui.nlp_router import detect_intent, select_agents
 import database as db
 
 app = FastAPI(title="Agentic AI System")
+@app.get("/")
+def home():
+    return {"message":"Backend is running"}
 
 # Enable CORS for React frontend
 app.add_middleware(
