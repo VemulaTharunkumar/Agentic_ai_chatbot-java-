@@ -9,7 +9,7 @@ MODEL = os.getenv("MODEL", "llama-3.3-70b-versatile")
 
 
 if not GROQ_API_KEY:
-    raise ValueError("❌ GROQ_API_KEY missing in .env")
+    raise ValueError("❌ GROQ_API_KEY not found in env variables")
 
 client = Groq(api_key=GROQ_API_KEY)
 

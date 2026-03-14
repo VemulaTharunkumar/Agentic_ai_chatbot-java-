@@ -20,7 +20,7 @@ const Dashboard = ({ user, onLogout }) => {
     const fetchHistory = async () => {
       if (!user?.username) return;
       try {
-        const res = await fetch(`http://localhost:8000/api/history/${user.username}`);
+        const res = await fetch(`https://agentic-ai-chatbot-1-30s7.onrender.com/`);
         if (res.ok) {
           const data = await res.json();
           // The API returns it sorted newest first (timestamp DESC). We want oldest first for display flow.
@@ -47,7 +47,7 @@ const Dashboard = ({ user, onLogout }) => {
     setPopupAgent(null);
 
     try {
-      const response = await fetch('http://localhost:8000/api/task', {
+      const response = await fetch('https://agentic-ai-chatbot-1-30s7.onrender.com/api/task', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ task, username: user.username })
@@ -84,7 +84,7 @@ const Dashboard = ({ user, onLogout }) => {
     if (!window.confirm("Are you sure you want to delete this chat history?")) return;
 
     try {
-      const res = await fetch(`http://localhost:8000/api/history/${chatId}`, {
+      const res = await fetch(`https://agentic-ai-chatbot-1-30s7.onrender.com/api/history/${chatId}`, {
         method: 'DELETE'
       });
       if (res.ok) {
