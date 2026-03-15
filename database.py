@@ -4,7 +4,7 @@ from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
 from bson.objectid import ObjectId
 from dotenv import load_dotenv
-
+import certifi
 # Load environment variables
 load_dotenv()
 
@@ -12,13 +12,19 @@ load_dotenv()
 MONGO_URI = os.getenv("MONGO_URI")
 DB_NAME = "agentic_ai_db"
 COLLECTION_NAME = "chat_history"
+print("Mongo URI:", MONGO_URI)
 
 def get_db_collection():
     """
     Connects to MongoDB and returns the chat_history collection.
     """
     try:
-        client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+        client = MongoClient(
+         MONGO_URI,
+        serverSelectionTimeoutMS=5000,
+        tls=True,
+        tlsCAFile=certifi.where()
+        )
         # Verify connection
         client.admin.command('ping')
         db = client[DB_NAME]
