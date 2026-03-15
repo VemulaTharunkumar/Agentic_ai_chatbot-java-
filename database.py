@@ -10,7 +10,7 @@ load_dotenv()
 
 # MongoDB Configuration
 MONGO_URI = os.getenv("MONGO_URI")
-DB_NAME = "agentic_ai_system"
+DB_NAME = "agentic_ai_db"
 COLLECTION_NAME = "chat_history"
 
 def get_db_collection():
