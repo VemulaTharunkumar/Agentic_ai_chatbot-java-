@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # MongoDB Configuration
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
+MONGO_URI = os.getenv("MONGO_URI")
 DB_NAME = "agentic_ai_system"
 COLLECTION_NAME = "chat_history"
 
