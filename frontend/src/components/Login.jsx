@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import './Login.css';
 
+// ✅ Use environment variable (fallback to your Render backend)
+const BASE_URL = process.env.REACT_APP_API_URL || "https://agentic-ai-chatbot-1-30s7.onrender.com";
+
 const Login = ({ onLogin }) => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [username, setUsername] = useState('');
@@ -11,6 +14,7 @@ const Login = ({ onLogin }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     if (!username || !password) {
       setError('Please enter both username and password.');
       return;
@@ -21,7 +25,11 @@ const Login = ({ onLogin }) => {
     setSuccessMsg('');
 
     try {
-      const endpoint = isSignUp ? 'http://localhost:8000/api/signup' : 'http://localhost:8000/api/login';
+      // ✅ Updated endpoint
+      const endpoint = isSignUp
+        ? `${BASE_URL}/api/signup`
+        : `${BASE_URL}/api/login`;
+
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -41,7 +49,7 @@ const Login = ({ onLogin }) => {
         setError(data.detail || (isSignUp ? 'Signup failed.' : 'Login failed.'));
       }
     } catch (err) {
-      console.warn("Backend not reachable", err);
+      console.error("Backend not reachable:", err);
       setError("Could not connect to authentication server.");
     } finally {
       setIsLoading(false);
@@ -64,7 +72,18 @@ const Login = ({ onLogin }) => {
         </div>
 
         {error && <div className="error-message">{error}</div>}
-        {successMsg && <div className="error-message" style={{backgroundColor: 'rgba(16, 185, 129, 0.1)', color: 'var(--success-color)', border: '1px solid rgba(16, 185, 129, 0.3)'}}>{successMsg}</div>}
+        {successMsg && (
+          <div
+            className="error-message"
+            style={{
+              backgroundColor: 'rgba(16, 185, 129, 0.1)',
+              color: 'var(--success-color)',
+              border: '1px solid rgba(16, 185, 129, 0.3)'
+            }}
+          >
+            {successMsg}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="login-form">
           <div className="input-group">
@@ -94,25 +113,29 @@ const Login = ({ onLogin }) => {
             {isLoading ? 'Processing...' : (isSignUp ? 'Sign Up' : 'Sign In')}
           </button>
         </form>
-        
+
         <div style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.9rem' }}>
           <span style={{ color: 'var(--text-secondary)' }}>
             {isSignUp ? 'Already have an account?' : "Don't have an account?"}
           </span>
-          <button 
-            type="button" 
-            onClick={toggleMode} 
-            style={{ 
-              background: 'none', border: 'none', color: 'var(--accent-color)', 
-              fontWeight: '600', marginLeft: '0.5rem', cursor: 'pointer', textDecoration: 'underline'
+          <button
+            type="button"
+            onClick={toggleMode}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--accent-color)',
+              fontWeight: '600',
+              marginLeft: '0.5rem',
+              cursor: 'pointer',
+              textDecoration: 'underline'
             }}
           >
             {isSignUp ? 'Log In' : 'Sign Up'}
           </button>
         </div>
       </div>
-      
-      {/* Background decoration elements */}
+
       <div className="blob blob-1"></div>
       <div className="blob blob-2"></div>
     </div>
