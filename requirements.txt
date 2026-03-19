@@ -7,3 +7,4 @@ fastapi
 certifi
 uvicorn
 pydantic
+bcrypt
