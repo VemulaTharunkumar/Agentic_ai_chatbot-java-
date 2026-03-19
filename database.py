@@ -5,24 +5,39 @@ from pymongo.errors import ConnectionFailure
 from bson.objectid import ObjectId
 from dotenv import load_dotenv
 import certifi
-import bcrypt   # 🔐 for password hashing
-
 # Load environment variables
 load_dotenv()
 
 # MongoDB Configuration
 MONGO_URI = os.getenv("MONGO_URI")
 DB_NAME = "agentic_ai_db"
-
-# Collections
-CHAT_COLLECTION = "chat_history"
-USER_COLLECTION = "users"
-
+COLLECTION_NAME = "chat_history"
 print("Mongo URI:", MONGO_URI)
 
+def get_db_collection():
+    """
+    Connects to MongoDB and returns the chat_history collection.
+    """
+    try:
+        client = MongoClient(
+         MONGO_URI,
+        serverSelectionTimeoutMS=5000,
+        tls=True,
+        tlsCAFile=certifi.where()
+        )
+        # Verify connection
+        client.admin.command('ping')
+        db = client[DB_NAME]
+        return db[COLLECTION_NAME]
+    except ConnectionFailure as e:
+        print(f"MongoDB connection failed: {e}")
+        return None
+    except Exception as e:
+        print(f"An error occurred connecting to MongoDB: {e}")
+        return None
 
-# -------------------- DB CONNECTION --------------------
-def get_database():
+def get_user_collection():
+    """ Connects to MongoDB and returns the users collection """
     try:
         client = MongoClient(
             MONGO_URI,
@@ -30,116 +45,107 @@ def get_database():
             tls=True,
             tlsCAFile=certifi.where()
         )
+
+        # ✅ Verify connection
         client.admin.command('ping')
-        return client[DB_NAME]
-    except ConnectionFailure as e:
-        print(f"MongoDB connection failed: {e}")
+
+        db = client[DB_NAME]
+        return db["users"]
+
+    except Exception as e:
+        print(f"MongoDB connection failed (users): {e}")
         return None
 
-
-def get_chat_collection():
-    db = get_database()
-    return db[CHAT_COLLECTION] if db else None
-
-
-def get_user_collection():
-    db = get_database()
-    return db[USER_COLLECTION] if db else None
-
-
-# -------------------- USER AUTH --------------------
-def get_or_create_user(username: str, password: str):
-    print("🔥 get_or_create_user CALLED")
+def get_or_create_user(username: str, password: str) -> bool:
+    print("🔥 get_or_create_user CALLED")   # DEBUG
 
     collection = get_user_collection()
+
     if collection is None:
-        print("❌ User collection not found")
-        return None
-
+        print("❌ Collection is None")
+        return False
+        
     user = collection.find_one({"username": username})
-
+    
     if user:
         print("✅ User exists")
-
-        # 🔐 Check hashed password
-        if bcrypt.checkpw(password.encode(), user["password"]):
-            return str(user["_id"])   # ✅ return user_id
-        else:
-            print("❌ Incorrect password")
-            return None
-
+        return user.get("password") == password
     else:
         print("🆕 Creating new user")
 
-        hashed_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
-
         new_user = {
             "username": username,
-            "password": hashed_password,
+            "password": password,
             "created_at": datetime.utcnow()
         }
 
         try:
-            result = collection.insert_one(new_user)
+            collection.insert_one(new_user)
             print("✅ User inserted")
-            return str(result.inserted_id)   # ✅ return new user_id
+            return True
         except Exception as e:
             print(f"❌ Insert failed: {e}")
-            return None
+            return False
 
-
-# -------------------- CHAT SAVE --------------------
 def save_chat_history(user_id: str, prompt: str, agent: str, response: str):
-    collection = get_chat_collection()
+    """
+    Saves a chat record to the MongoDB database.
 
-    if collection is None:
-        return None
+    Args:
+        user_id (str): Unique identifier for the user session.
+        prompt (str): The user's input prompt.
+        agent (str): The agent(s) that generated the response.
+        response (str): The final generated response.
+    """
+    collection = get_db_collection()
+    if collection is not None:
+        chat_record = {
+            "user_id": user_id,
+            "prompt": prompt,
+            "agent": agent,
+            "response": response,
+            "timestamp": datetime.utcnow()
+        }
+        try:
+            result = collection.insert_one(chat_record)
+            return str(result.inserted_id)
+        except Exception as e:
+            print(f"Failed to save chat history: {e}")
+            return None
+    return None
 
-    chat_record = {
-        "user_id": ObjectId(user_id),   # ✅ FIXED (ObjectId)
-        "prompt": prompt,
-        "agent": agent,
-        "response": response,
-        "timestamp": datetime.utcnow()
-    }
-
-    try:
-        result = collection.insert_one(chat_record)
-        return str(result.inserted_id)
-    except Exception as e:
-        print(f"❌ Failed to save chat history: {e}")
-        return None
-
-
-# -------------------- GET CHAT --------------------
 def get_recent_chats(user_id: str, limit: int = 10):
-    collection = get_chat_collection()
+    """
+    Retrieves the most recent chat histories for a specific user.
 
-    if collection is None:
-        return []
+    Args:
+        user_id (str): Unique identifier for the user session.
+        limit (int): Maximum number of records to return.
 
-    try:
-        cursor = collection.find(
-            {"user_id": ObjectId(user_id)}   # ✅ FIXED
-        ).sort("timestamp", -1).limit(limit)
+    Returns:
+        list: A list of chat history documents.
+    """
+    collection = get_db_collection()
+    if collection is not None:
+        try:
+            # Sort by timestamp descending to get the most recent, then limit
+            cursor = collection.find({"user_id": user_id}).sort("timestamp", -1).limit(limit)
+            return list(cursor)
+        except Exception as e:
+            print(f"Failed to retrieve chat history: {e}")
+            return []
+    return []
 
-        return list(cursor)
-
-    except Exception as e:
-        print(f"❌ Failed to retrieve chat history: {e}")
-        return []
-
-
-# -------------------- DELETE CHAT --------------------
 def delete_chat(chat_id: str):
-    collection = get_chat_collection()
-
-    if collection is None:
-        return False
-
-    try:
-        result = collection.delete_one({"_id": ObjectId(chat_id)})
-        return result.deleted_count > 0
-    except Exception as e:
-        print(f"❌ Failed to delete chat: {e}")
-        return False
+    """
+    Deletes a specific chat record by its ID.
+    """
+    collection = get_db_collection()
+    if collection is not None:
+        try:
+            result = collection.delete_one({"_id": ObjectId(chat_id)})
+            return result.deleted_count > 0
+        except Exception as e:
+            print(f"Failed to delete chat: {e}")
+            return False
+    return False
