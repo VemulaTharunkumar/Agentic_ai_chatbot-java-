@@ -5,7 +5,7 @@ from pymongo.errors import ConnectionFailure
 from bson.objectid import ObjectId
 from dotenv import load_dotenv
 import certifi
-import bcrypt
+import bcrypt   # 🔐 for password hashing
 
 # Load environment variables
 load_dotenv()
@@ -33,21 +33,18 @@ def get_database():
         client.admin.command('ping')
         return client[DB_NAME]
     except ConnectionFailure as e:
-        print(f"❌ MongoDB connection failed: {e}")
-        return None
-    except Exception as e:
-        print(f"❌ Unexpected DB error: {e}")
+        print(f"MongoDB connection failed: {e}")
         return None
 
 
 def get_chat_collection():
     db = get_database()
-    return db[CHAT_COLLECTION] if db is not None else None   # ✅ FIXED
+    return db[CHAT_COLLECTION] if db else None
 
 
 def get_user_collection():
     db = get_database()
-    return db[USER_COLLECTION] if db is not None else None   # ✅ FIXED
+    return db[USER_COLLECTION] if db else None
 
 
 # -------------------- USER AUTH --------------------
@@ -66,7 +63,7 @@ def get_or_create_user(username: str, password: str):
 
         # 🔐 Check hashed password
         if bcrypt.checkpw(password.encode(), user["password"]):
-            return str(user["_id"])
+            return str(user["_id"])   # ✅ return user_id
         else:
             print("❌ Incorrect password")
             return None
@@ -85,51 +82,48 @@ def get_or_create_user(username: str, password: str):
         try:
             result = collection.insert_one(new_user)
             print("✅ User inserted")
-            return str(result.inserted_id)
+            return str(result.inserted_id)   # ✅ return new user_id
         except Exception as e:
             print(f"❌ Insert failed: {e}")
             return None
 
 
-# -------------------- SAVE CHAT --------------------
+# -------------------- CHAT SAVE --------------------
 def save_chat_history(user_id: str, prompt: str, agent: str, response: str):
     collection = get_chat_collection()
 
     if collection is None:
-        print("❌ Chat collection not found")
         return None
 
-    try:
-        chat_record = {
-            "user_id": ObjectId(user_id),   # ✅ FIXED
-            "prompt": prompt,
-            "agent": agent,
-            "response": response,
-            "timestamp": datetime.utcnow()
-        }
+    chat_record = {
+        "user_id": ObjectId(user_id),   # ✅ FIXED (ObjectId)
+        "prompt": prompt,
+        "agent": agent,
+        "response": response,
+        "timestamp": datetime.utcnow()
+    }
 
+    try:
         result = collection.insert_one(chat_record)
         return str(result.inserted_id)
-
     except Exception as e:
         print(f"❌ Failed to save chat history: {e}")
         return None
 
 
-# -------------------- GET CHATS --------------------
+# -------------------- GET CHAT --------------------
 def get_recent_chats(user_id: str, limit: int = 10):
     collection = get_chat_collection()
 
     if collection is None:
-        print("❌ Chat collection not found")
         return []
 
     try:
-        chats = collection.find(
+        cursor = collection.find(
             {"user_id": ObjectId(user_id)}   # ✅ FIXED
         ).sort("timestamp", -1).limit(limit)
 
-        return list(chats)
+        return list(cursor)
 
     except Exception as e:
         print(f"❌ Failed to retrieve chat history: {e}")
@@ -141,13 +135,11 @@ def delete_chat(chat_id: str):
     collection = get_chat_collection()
 
     if collection is None:
-        print("❌ Chat collection not found")
         return False
 
     try:
         result = collection.delete_one({"_id": ObjectId(chat_id)})
         return result.deleted_count > 0
-
     except Exception as e:
         print(f"❌ Failed to delete chat: {e}")
         return False
