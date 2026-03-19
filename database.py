@@ -39,38 +39,53 @@ def get_db_collection():
 def get_user_collection():
     """ Connects to MongoDB and returns the users collection """
     try:
-        client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+        client = MongoClient(
+            MONGO_URI,
+            serverSelectionTimeoutMS=5000,
+            tls=True,
+            tlsCAFile=certifi.where()
+        )
+
+        # ✅ Verify connection
+        client.admin.command('ping')
+
         db = client[DB_NAME]
         return db["users"]
+
     except Exception as e:
-        print(f"MongoDB connection failed: {e}")
+        print(f"MongoDB connection failed (users): {e}")
         return None
 
 def get_or_create_user(username: str, password: str) -> bool:
-    """
-    Checks if a user exists. If so, checks password.
-    If not, creates the user with the password. 
-    In a real app, hash this password, but for simplicity here we keep it raw or lightly hashed.
-    Returns True if login is successful, False otherwise.
-    """
+    print("🔥 get_or_create_user CALLED")   # DEBUG
+
     collection = get_user_collection()
+
     if collection is None:
+        print("❌ Collection is None")
         return False
         
     user = collection.find_one({"username": username})
     
     if user:
-        # User exists, check password
+        print("✅ User exists")
         return user.get("password") == password
     else:
-        # User doesn't exist, create it
+        print("🆕 Creating new user")
+
         new_user = {
             "username": username,
             "password": password,
             "created_at": datetime.utcnow()
         }
-        collection.insert_one(new_user)
-        return True
+
+        try:
+            collection.insert_one(new_user)
+            print("✅ User inserted")
+            return True
+        except Exception as e:
+            print(f"❌ Insert failed: {e}")
+            return False
 
 def save_chat_history(user_id: str, prompt: str, agent: str, response: str):
     """
