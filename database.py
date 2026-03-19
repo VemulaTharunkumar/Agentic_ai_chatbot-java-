@@ -56,36 +56,45 @@ def get_user_collection():
         print(f"MongoDB connection failed (users): {e}")
         return None
 
-def get_or_create_user(username: str, password: str) -> bool:
-    print("🔥 get_or_create_user CALLED")   # DEBUG
-
+def verify_user(username: str, password: str) -> bool:
+    print("🔥 verify_user CALLED")   # DEBUG
     collection = get_user_collection()
-
     if collection is None:
         print("❌ Collection is None")
         return False
         
     user = collection.find_one({"username": username})
-    
     if user:
         print("✅ User exists")
         return user.get("password") == password
-    else:
-        print("🆕 Creating new user")
+    return False
 
-        new_user = {
-            "username": username,
-            "password": password,
-            "created_at": datetime.utcnow()
-        }
+def create_user(username: str, password: str) -> bool:
+    print("🔥 create_user CALLED")   # DEBUG
+    collection = get_user_collection()
+    if collection is None:
+        print("❌ Collection is None")
+        return False
+        
+    user = collection.find_one({"username": username})
+    if user:
+        print("❌ User already exists")
+        return False
+    
+    print("🆕 Creating new user")
+    new_user = {
+        "username": username,
+        "password": password,
+        "created_at": datetime.utcnow()
+    }
 
-        try:
-            collection.insert_one(new_user)
-            print("✅ User inserted")
-            return True
-        except Exception as e:
-            print(f"❌ Insert failed: {e}")
-            return False
+    try:
+        collection.insert_one(new_user)
+        print("✅ User inserted")
+        return True
+    except Exception as e:
+        print(f"❌ Insert failed: {e}")
+        return False
 
 def save_chat_history(user_id: str, prompt: str, agent: str, response: str):
     """

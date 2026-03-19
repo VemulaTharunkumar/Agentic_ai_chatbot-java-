@@ -40,10 +40,20 @@ class LoginRequest(BaseModel):
 
 # --- Endpoints ---
 
+@app.post("/api/signup")
+async def signup(req: LoginRequest):
+    if req.username and req.password:
+        success = db.create_user(req.username, req.password)
+        if success:
+            return {"status": "success", "message": "Signup successful", "user": {"username": req.username}}
+        else:
+            raise HTTPException(status_code=400, detail="Username already exists or creation failed")
+    raise HTTPException(status_code=400, detail="Missing username or password")
+
 @app.post("/api/login")
 async def login(req: LoginRequest):
     if req.username and req.password:
-        success = db.get_or_create_user(req.username, req.password)
+        success = db.verify_user(req.username, req.password)
         if success:
             return {"status": "success", "message": "Login successful", "user": {"username": req.username}}
         else:

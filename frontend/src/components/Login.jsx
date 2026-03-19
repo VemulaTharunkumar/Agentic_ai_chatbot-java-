@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import './Login.css';
 
 const Login = ({ onLogin }) => {
+  const [isSignUp, setIsSignUp] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -16,9 +18,11 @@ const Login = ({ onLogin }) => {
 
     setIsLoading(true);
     setError('');
+    setSuccessMsg('');
 
     try {
-      const response = await fetch('http://localhost:8000/api/login', {
+      const endpoint = isSignUp ? 'http://localhost:8000/api/signup' : 'http://localhost:8000/api/login';
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
@@ -27,17 +31,27 @@ const Login = ({ onLogin }) => {
       const data = await response.json();
 
       if (response.ok) {
-        onLogin(data.user);
+        if (isSignUp) {
+          setSuccessMsg('Account created successfully! Logging you in...');
+          setTimeout(() => onLogin(data.user), 1500);
+        } else {
+          onLogin(data.user);
+        }
       } else {
-        setError(data.detail || 'Login failed.');
+        setError(data.detail || (isSignUp ? 'Signup failed.' : 'Login failed.'));
       }
     } catch (err) {
-      // Allow bypass for local dev if backend isn't up
-      console.warn("Backend not reachable, simulating login");
-      onLogin({ username });
+      console.warn("Backend not reachable", err);
+      setError("Could not connect to authentication server.");
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const toggleMode = () => {
+    setIsSignUp(!isSignUp);
+    setError('');
+    setSuccessMsg('');
   };
 
   return (
@@ -46,10 +60,11 @@ const Login = ({ onLogin }) => {
         <div className="login-header">
           <div className="logo-icon">🤖</div>
           <h2>Agentic AI System</h2>
-          <p>Login to access the orchestrator</p>
+          <p>{isSignUp ? 'Create an account to get started' : 'Login to access the orchestrator'}</p>
         </div>
 
         {error && <div className="error-message">{error}</div>}
+        {successMsg && <div className="error-message" style={{backgroundColor: 'rgba(16, 185, 129, 0.1)', color: 'var(--success-color)', border: '1px solid rgba(16, 185, 129, 0.3)'}}>{successMsg}</div>}
 
         <form onSubmit={handleSubmit} className="login-form">
           <div className="input-group">
@@ -76,9 +91,25 @@ const Login = ({ onLogin }) => {
           </div>
 
           <button type="submit" className="login-button" disabled={isLoading}>
-            {isLoading ? 'Authenticating...' : 'Sign In'}
+            {isLoading ? 'Processing...' : (isSignUp ? 'Sign Up' : 'Sign In')}
           </button>
         </form>
+        
+        <div style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.9rem' }}>
+          <span style={{ color: 'var(--text-secondary)' }}>
+            {isSignUp ? 'Already have an account?' : "Don't have an account?"}
+          </span>
+          <button 
+            type="button" 
+            onClick={toggleMode} 
+            style={{ 
+              background: 'none', border: 'none', color: 'var(--accent-color)', 
+              fontWeight: '600', marginLeft: '0.5rem', cursor: 'pointer', textDecoration: 'underline'
+            }}
+          >
+            {isSignUp ? 'Log In' : 'Sign Up'}
+          </button>
+        </div>
       </div>
       
       {/* Background decoration elements */}
