@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import './Login.css';
 
 // ✅ Use environment variable (fallback to your Render backend)
-const BASE_URL = process.env.REACT_APP_API_URL || "https://agentic-ai-chatbot-1-30s7.onrender.com";
+const BASE_URL = "http://127.0.0.1:8000";
 
 const Login = ({ onLogin }) => {
   const [isSignUp, setIsSignUp] = useState(false);

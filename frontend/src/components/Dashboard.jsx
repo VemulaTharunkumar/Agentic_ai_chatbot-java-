@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { LogOut, Copy, Send, Bot, Check, LayoutDashboard, Brain, Globe, Code, FileText, Trash2 } from 'lucide-react';
+import { LogOut, Copy, Send, Bot, Check, LayoutDashboard, Brain, Globe, Code, FileText, Trash2, Star, Edit2, X } from 'lucide-react';
 import ThinkingLoader from './ThinkingLoader';
 import './Dashboard.css';
-const API_URL = "https://agentic-ai-chatbot-1-30s7.onrender.com";
+const API_URL = "http://127.0.0.1:8000";
 const Dashboard = ({ user, onLogout }) => {
   const [task, setTask] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -15,6 +15,11 @@ const Dashboard = ({ user, onLogout }) => {
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [selectedHistoryItem, setSelectedHistoryItem] = useState(null);
   const [popupAgent, setPopupAgent] = useState(null);
+  const [editingChatId, setEditingChatId] = useState(null);
+  const [editingTitle, setEditingTitle] = useState('');
+  const [animatingChatId, setAnimatingChatId] = useState(null);
+  const [deletingChatId, setDeletingChatId] = useState(null);
+  const [erasingChatId, setErasingChatId] = useState(null);
 
   React.useEffect(() => {
     const fetchHistory = async () => {
@@ -47,7 +52,7 @@ const Dashboard = ({ user, onLogout }) => {
     setPopupAgent(null);
 
     try {
-      const response = await fetch('https://agentic-ai-chatbot-1-30s7.onrender.com/api/task', {
+      const response = await fetch('http://127.0.0.1:8000/api/task', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ task, username: user.username })
@@ -58,15 +63,33 @@ const Dashboard = ({ user, onLogout }) => {
       if (response.ok) {
         setResult(data);
         
-        // Append to chat history
+        // Append to chat history, but maintain max 10
         const newHistoryItem = {
           _id: data.chat_id || Date.now().toString(), // Use actual DB ID
           prompt: task,
+          title: task,
+          isPinned: false,
           response: data.final_answer,
           agent: data.agents.join(", "),
           timestamp: new Date().toISOString()
         };
-        setChatHistory(prev => [...prev, newHistoryItem]);
+        
+        setChatHistory(prev => {
+          const updated = [...prev, newHistoryItem];
+          if (updated.length > 10) {
+            // Find the oldest unpinned chat to remove
+            const unpinnedChats = updated.filter(c => !c.isPinned);
+            if (unpinnedChats.length > 0) {
+              const oldestUnpinnedId = unpinnedChats.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))[0]._id;
+              return updated.filter(c => c._id !== oldestUnpinnedId);
+            } else {
+              // If all are pinned (rare), remove oldest overall
+              const oldestOverallId = updated.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))[0]._id;
+              return updated.filter(c => c._id !== oldestOverallId);
+            }
+          }
+          return updated;
+        });
         
       } else {
         setError(data.detail || 'An error occurred while processing the task.');
@@ -79,27 +102,113 @@ const Dashboard = ({ user, onLogout }) => {
   };
 
   const handleDeleteChat = async (e, chatId) => {
-    e.stopPropagation(); // prevent selecting the chat when clicking delete
+    e.stopPropagation();
 
     if (!window.confirm("Are you sure you want to delete this chat history?")) return;
 
+    // Start delete animation
+    setDeletingChatId(chatId);
+
     try {
-      const res = await fetch(`https://agentic-ai-chatbot-1-30s7.onrender.com/api/history/${chatId}`, {
+      const res = await fetch(`http://127.0.0.1:8000/api/history/${chatId}`, {
         method: 'DELETE'
       });
       if (res.ok) {
-        // Remove from local state
-        setChatHistory(prev => prev.filter(c => c._id !== chatId));
-        
-        // If the deleted items is currently selected, clear the view
-        if (selectedHistoryItem?._id === chatId) {
-          setSelectedHistoryItem(null);
-        }
+        setTimeout(() => {
+          setChatHistory(prev => prev.filter(c => c._id !== chatId));
+          if (selectedHistoryItem?._id === chatId) {
+            setSelectedHistoryItem(null);
+          }
+          setDeletingChatId(null);
+        }, 300); // 300ms for slide-out animation
       } else {
         console.error("Failed to delete chat record");
+        setDeletingChatId(null);
       }
     } catch (err) {
       console.error("Could not reach backend to delete chat", err);
+      setDeletingChatId(null);
+    }
+  };
+
+  const handleTogglePin = async (e, chatId, currentStatus) => {
+    e.stopPropagation();
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/history/${chatId}/pin`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isPinned: !currentStatus })
+      });
+      
+      if (res.ok) {
+        setChatHistory(prev => {
+          const updated = prev.map(c => c._id === chatId ? { ...c, isPinned: !currentStatus } : c);
+          // Re-sort: pinned first, then by timestamp desc
+          return updated.sort((a, b) => {
+            if (a.isPinned === b.isPinned) {
+              return new Date(b.timestamp) - new Date(a.timestamp);
+            }
+            return a.isPinned ? -1 : 1;
+          });
+        });
+      } else if (res.status === 400) {
+        const errorData = await res.json();
+        window.alert(errorData.detail || "Maximum of 10 pinned chats allowed.");
+      }
+    } catch (err) {
+      console.error("Could not reach backend to pin chat", err);
+    }
+  };
+
+  const handleRenameSubmit = async (e, chatId) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    if (!editingTitle.trim()) {
+      setEditingChatId(null);
+      return;
+    }
+
+    // Capture the target ID and immediately close the input form
+    const targetId = chatId;
+    setEditingChatId(null);
+    
+    // Start "erasing" animation on the old title
+    setErasingChatId(targetId);
+
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/history/${targetId}/rename`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: editingTitle })
+      });
+      
+      if (res.ok) {
+        setTimeout(() => {
+          // Erasing finished (300ms). Now update title and start "typing" animation.
+          setErasingChatId(null);
+          setChatHistory(prev => prev.map(c => c._id === targetId ? { ...c, title: editingTitle } : c));
+          setAnimatingChatId(targetId);
+          
+          setTimeout(() => setAnimatingChatId(null), 500); // 500ms for typing animation
+        }, 300);
+      } else {
+        setErasingChatId(null);
+      }
+    } catch (err) {
+      console.error("Could not reach backend to rename chat", err);
+      setErasingChatId(null);
+    }
+  };
+
+  const startRename = (e, chat) => {
+    e.stopPropagation();
+    setEditingTitle(chat.title || chat.prompt);
+    setEditingChatId(chat._id);
+  };
+
+  const handleKeyDown = (e, chatId) => {
+    if (e.key === 'Escape') {
+      setEditingChatId(null);
     }
   };
 
@@ -150,18 +259,50 @@ const Dashboard = ({ user, onLogout }) => {
               {chatHistory.map((chat) => (
                 <div 
                   key={chat._id} 
-                  className={`history-list-item ${selectedHistoryItem?._id === chat._id ? 'active' : ''}`}
+                  className={`history-list-item ${selectedHistoryItem?._id === chat._id ? 'active' : ''} ${chat.isPinned ? 'pinned' : ''} ${deletingChatId === chat._id ? 'deleting-animation' : ''}`}
                   onClick={() => setSelectedHistoryItem(chat)}
                 >
                   <Bot size={14} className="history-icon" />
-                  <span className="history-truncate">{chat.prompt}</span>
-                  <button 
-                    className="delete-chat-btn"
-                    onClick={(e) => handleDeleteChat(e, chat._id)}
-                    title="Delete Chat"
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                  
+                  {editingChatId === chat._id ? (
+                    <form onSubmit={(e) => handleRenameSubmit(e, chat._id)} className="rename-form" onClick={(e) => e.stopPropagation()}>
+                      <input 
+                        type="text" 
+                        value={editingTitle} 
+                        onChange={(e) => setEditingTitle(e.target.value)} 
+                        autoFocus
+                        onKeyDown={(e) => handleKeyDown(e, chat._id)}
+                      />
+                    </form>
+                  ) : (
+                    <span className={`history-truncate ${animatingChatId === chat._id ? 'typing-animation' : ''} ${erasingChatId === chat._id ? 'erasing-animation' : ''}`}>
+                      {chat.title || chat.prompt}
+                    </span>
+                  )}
+                  
+                  <div className="history-actions">
+                    <button 
+                      className={`action-btn pin-btn ${chat.isPinned ? 'is-pinned' : ''}`}
+                      onClick={(e) => handleTogglePin(e, chat._id, chat.isPinned)}
+                      title={chat.isPinned ? "Unpin Chat" : "Pin Chat"}
+                    >
+                      <Star size={14} fill={chat.isPinned ? "currentColor" : "none"} />
+                    </button>
+                    <button 
+                      className="action-btn edit-btn"
+                      onClick={(e) => startRename(e, chat)}
+                      title="Rename Chat"
+                    >
+                      <Edit2 size={14} />
+                    </button>
+                    <button 
+                      className="action-btn delete-chat-btn"
+                      onClick={(e) => handleDeleteChat(e, chat._id)}
+                      title="Delete Chat"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

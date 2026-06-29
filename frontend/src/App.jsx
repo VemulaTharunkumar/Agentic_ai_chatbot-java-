@@ -4,7 +4,6 @@ import Dashboard from './components/Dashboard';
 import './App.css';
 
 function App() {
-  // Initialize state from localStorage if available
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     return localStorage.getItem('isAuthenticated') === 'true';
   });
