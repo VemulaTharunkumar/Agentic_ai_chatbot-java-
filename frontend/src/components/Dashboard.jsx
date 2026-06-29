@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import { LogOut, Copy, Send, Bot, Check, LayoutDashboard, Brain, Globe, Code, FileText, Trash2, Star, Edit2, X } from 'lucide-react';
 import ThinkingLoader from './ThinkingLoader';
 import './Dashboard.css';
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8080";
 const Dashboard = ({ user, onLogout }) => {
   const [task, setTask] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -52,7 +52,7 @@ const Dashboard = ({ user, onLogout }) => {
     setPopupAgent(null);
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/task', {
+      const response = await fetch(`${API_URL}/api/task`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ task, username: user.username })
@@ -110,7 +110,7 @@ const Dashboard = ({ user, onLogout }) => {
     setDeletingChatId(chatId);
 
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/history/${chatId}`, {
+      const res = await fetch(`${API_URL}/api/history/${chatId}`, {
         method: 'DELETE'
       });
       if (res.ok) {
@@ -134,7 +134,7 @@ const Dashboard = ({ user, onLogout }) => {
   const handleTogglePin = async (e, chatId, currentStatus) => {
     e.stopPropagation();
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/history/${chatId}/pin`, {
+      const res = await fetch(`${API_URL}/api/history/${chatId}/pin`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isPinned: !currentStatus })
@@ -176,7 +176,7 @@ const Dashboard = ({ user, onLogout }) => {
     setErasingChatId(targetId);
 
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/history/${targetId}/rename`, {
+      const res = await fetch(`${API_URL}/api/history/${targetId}/rename`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: editingTitle })
