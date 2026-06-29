@@ -1,7 +1,7 @@
 # Agentic AI System
 
 A multi-agent AI system that processes user prompts using specialized AI agents.
-The system includes a modern React frontend and a Python FastAPI backend orchestrating multiple intelligent agents.
+The system includes a modern React frontend and a Java Spring Boot backend orchestrating multiple intelligent agents.
 
 ## 🚀 Project Overview
 
@@ -12,7 +12,7 @@ Each agent has a specific responsibility such as planning, researching, coding, 
 The system uses:
 
 * React frontend (Vite)
-* FastAPI backend
+* Java Spring Boot backend
 * Multi-agent architecture
 * NLP routing
 * Modular agent system
@@ -52,27 +52,18 @@ Reviews and improves the generated response.
 ```
 Agentic-AI-System
 │
-├── agents
-│   ├── planner_agent.py
-│   ├── research_agent.py
-│   ├── coder_agent.py
-│   ├── critic_agent.py
-│   └── base_agent.py
-│
-├── orchestrator
-│   └── orchestrator_controller.py
-│
-├── ui
-│   └── nlp_router.py
+├── backend-java
+│   ├── src
+│   │   └── main
+│   │       └── java
+│   │           └── com.agenticai
+│   └── pom.xml
 │
 ├── frontend
 │   ├── src
 │   ├── components
 │   └── vite.config.js
 │
-├── api.py
-├── database.py
-├── requirements.txt
 └── README.md
 ```
 
@@ -80,22 +71,22 @@ Agentic-AI-System
 
 ## ⚙️ Backend Setup
 
-### Install dependencies
+Go to backend folder:
 
 ```
-pip install -r requirements.txt
+cd backend-java
 ```
 
-### Run FastAPI server
+### Run Java Spring Boot server
 
 ```
-uvicorn api:app --reload
+mvn spring-boot:run
 ```
 
 Backend will start at:
 
 ```
-http://localhost:8000
+http://localhost:8080
 ```
 
 ---
@@ -138,14 +129,13 @@ Frontend:
 
 Backend:
 
-* Python
-* FastAPI
-* LangChain
-* OpenAI API
+* Java
+* Spring Boot
+* Groq API
 
-Database (optional):
+Database:
 
-* MongoDB Atlas
+* SQL Database
 
 ---
 
@@ -162,7 +152,7 @@ Database (optional):
 
 ## 📌 Future Improvements
 
-* Add memory with MongoDB
+* Add memory with SQL database
 * Add authentication
 * Deploy frontend and backend
 * Add agent visualization
