@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import { LogOut, Copy, Send, Bot, Check, LayoutDashboard, Brain, Globe, Code, FileText, Trash2, Star, Edit2, X } from 'lucide-react';
 import ThinkingLoader from './ThinkingLoader';
 import './Dashboard.css';
-const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8080";
+const API_URL = import.meta.env.VITE_API_URL || "https://agentic-ai-chatbot-java-1.onrender.com";
 const Dashboard = ({ user, onLogout }) => {
   const [task, setTask] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
